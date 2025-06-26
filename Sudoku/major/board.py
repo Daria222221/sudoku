@@ -1,23 +1,29 @@
-import pygame
-import random
 import copy
-from major.constants import GRID_SIZE
+import random
+
 
 class SudokuBoard:
     def __init__(self, difficulty="None"):
         self.difficulty = difficulty
-        self.board = [[0 for _ in range(9)] for _ in range(9)]  # Добавил
-        solve(self.board)
-        remove_numbers(self.board, self.difficulty)
-        self.original = copy.deepcopy(self.board)  # Сохраняем исходное состояние
-        self.emptied_board = [[0 for _ in range(9)] for _ in range(9)]
+        self.board = [[0 for _ in range(9)] for _ in range(9)]
+        solve(self.board)  # Генерируем решенную доску
+        self.original = copy.deepcopy(self.board)
+        remove_numbers(self.board, self.difficulty)  # Создаем игру
+        self.solution = copy.deepcopy(self.board)
+        solve(self.solution)  # Сохраняем полное решение
+        self.emptied_board = copy.deepcopy(self.board)
 
-    def generate_board(self, difficulty):
-        """Генерирует новое поле судоку."""
-        board = [[0 for _ in range(9)] for _ in range(9)]
-        solve(board)  # Сначала решаем, чтобы получить валидную доску
-        remove_numbers(board, difficulty)  # Потом удаляем числа
-        return board
+        # Генерация новой доски
+        self.generate_new_board()
+
+    def generate_new_board(self):
+        """Генерирует новую доску с учетом сложности"""
+        solve(self.board)  # Сначала получаем решенную доску
+        self.solution = copy.deepcopy(self.board)
+        self.original = copy.deepcopy(self.board)
+        remove_numbers(self.board, self.difficulty)  # Удаляем числа согласно сложности
+        self.emptied_board = copy.deepcopy(self.board)
+
 
     def clear(self):
         self.board = copy.deepcopy(self.emptied_board)
@@ -37,22 +43,40 @@ class SudokuBoard:
         self.board[row][col] = value
         return True
 
+    def is_solved(self):
+        """Проверяет, решена ли доска."""
+        for i in range(9):
+            for j in range(9):
+                if self.board[i][j] == 0:
+                    # print("Есть пустые клетки")
+                    return False  # Есть пустые клетки
+                if not is_valid(self.board, i, j, self.board[i][j]):
+                    print(f"Ошибка в клетке ({i}, {j})")
+                    return False  # Есть ошибки в решении
+
+        return True
+
+
+
 def is_valid(board, row, col, num):
     """Проверяет, допустимо ли число num в позиции (row, col) доски."""
     # Проверка строки
-    if num in board[row]:
-        return False
+    for i in range(9):
+        if board[row][i] == num and col != i:
+            return False
 
     # Проверка столбца
-    if num in [board[i][col] for i in range(9)]:
-        return False
+    for i in range(9):
+        if board[i][col] == num and row != i:
+            return False
 
     # Проверка блока 3x3
-    start_row = row - row % 3
-    start_col = col - col % 3
-    for i in range(3):
-        for j in range(3):
-            if board[start_row + i][start_col + j] == num:
+    box_x = col // 3
+    box_y = row // 3
+
+    for i in range(box_y*3, box_y*3 + 3):
+        for j in range(box_x * 3, box_x*3 + 3):
+            if board[i][j] == num and (i,j) != (row, col):
                 return False
 
     return True
@@ -151,3 +175,10 @@ def solve_for_all_solutions(board, solutions):
             board[row][col] = num
             solve_for_all_solutions(board, solutions)
             board[row][col] = 0  # Сбрасываем значение при возврате
+
+def solve_and_return_solution(board):
+    """Полностью решает доску и возвращает решение"""
+    solution = copy.deepcopy(board)
+    if solve(solution):
+        return solution
+    return None
